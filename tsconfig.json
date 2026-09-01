@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["ES2017"],
+    "module": "None",
+    "moduleResolution": "node",
+    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"],
+    "types": ["plugin-typings"],
+    "strict": true,
+    "noImplicitAny": true,
+    "outFile": "code.js",
+    "rootDir": "src",
+    "sourceMap": false
+  },
+  "include": ["src/code.ts"]
+}

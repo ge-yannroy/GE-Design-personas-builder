@@ -1,0 +1,13 @@
+{
+  "name": "ge-design-personas-builder",
+  "version": "1.0.0",
+  "description": "Plugin Figma GE-DESIGN : genere une instance de composant par ligne de CSV avec calques texte remplis.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.0",
+    "typescript": "^5.5.4"
+  }
+}
