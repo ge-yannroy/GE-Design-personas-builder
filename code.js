@@ -25,6 +25,38 @@ function isSupportedTemplateType(node) {
 function hasLayoutGeometry(node) {
     return "x" in node && "width" in node;
 }
+/**
+ * Cherche le "rail" visuel associe a un curseur de slider : le frere le plus
+ * large (autre que le curseur lui-meme) dans le meme parent, ex. un
+ * MD_Divider. On ne peut pas se fier a la largeur du parent direct du
+ * curseur : si ce parent est en auto-layout avec un sizing "hug contents",
+ * Figma ignore les enfants en position absolue (le curseur) dans ce calcul —
+ * la largeur du parent ne reflete alors que celle du rail seul, pas la
+ * largeur visuelle complete, ou pire, tombe a une valeur degeneree.
+ * Utiliser directement le frere "rail" (et sa position x, pas seulement sa
+ * largeur, pour tenir compte d'un eventuel padding interne) est fiable dans
+ * les deux cas de figure (parent en auto-layout ou frame classique).
+ */
+function findTrackSibling(handle) {
+    const parent = handle.parent;
+    if (!parent || !("children" in parent)) {
+        return null;
+    }
+    const siblings = parent.children;
+    let best = null;
+    let bestWidth = -1;
+    for (let i = 0; i < siblings.length; i++) {
+        const sibling = siblings[i];
+        if (sibling === handle) {
+            continue;
+        }
+        if (hasLayoutGeometry(sibling) && sibling.width > bestWidth) {
+            bestWidth = sibling.width;
+            best = sibling;
+        }
+    }
+    return best;
+}
 /** Parcourt recursivement les enfants d'un noeud pour trouver tous les TEXT. */
 function findTextNodes(node) {
     const result = [];
@@ -118,37 +150,43 @@ function duplicateTemplate(template) {
     return template.clone();
 }
 /**
- * Positionne un curseur de slider le long de son rail (le parent direct du
- * curseur), selon une valeur 0-100. Retourne false si le rail n'est pas
- * exploitable (pas de geometrie, largeur insuffisante) ou si le curseur est
- * enfant d'un frame en auto-layout qui empeche le positionnement libre sans
- * bascule en "absolute".
+ * Positionne un curseur de slider selon une valeur 0-100.
+ * Strategie principale : utiliser le frere "rail" (ex. MD_Divider) comme
+ * reference de largeur ET de position de depart (gere un eventuel padding).
+ * Repli : si aucun frere exploitable n'est trouve, retombe sur l'ancienne
+ * methode (largeur du parent direct, origine x=0) pour rester compatible
+ * avec des gabarits plus simples ou le parent EST directement le rail.
  */
 function positionSliderHandle(handle, value) {
-    const parent = handle.parent;
-    if (!parent || !hasLayoutGeometry(parent)) {
-        return false;
-    }
     if (!hasLayoutGeometry(handle)) {
         return false;
     }
-    // Si le rail est en auto-layout, on bascule le curseur en positionnement
-    // absolu pour pouvoir le deplacer librement sans perturber le reste.
-    if ("layoutMode" in parent && parent.layoutMode !== "NONE") {
+    const parent = handle.parent;
+    // Si le curseur est enfant d'un frame en auto-layout, on le bascule en
+    // positionnement absolu pour pouvoir le deplacer librement.
+    if (parent && "layoutMode" in parent && parent.layoutMode !== "NONE") {
         if ("layoutPositioning" in handle) {
             handle.layoutPositioning = "ABSOLUTE";
         }
     }
-    const trackWidth = parent.width;
-    const handleWidth = handle.width;
-    const usable = trackWidth - handleWidth;
-    if (usable <= 0) {
-        return false;
-    }
     const clamped = Math.max(0, Math.min(100, value));
-    const newX = (clamped / 100) * usable;
-    handle.x = newX;
-    return true;
+    const track = findTrackSibling(handle);
+    if (track) {
+        const usable = track.width - handle.width;
+        if (usable > 0) {
+            handle.x = track.x + (clamped / 100) * usable;
+            return true;
+        }
+    }
+    // Repli : comportement precedent (parent = rail, origine x=0).
+    if (parent && hasLayoutGeometry(parent)) {
+        const usable = parent.width - handle.width;
+        if (usable > 0) {
+            handle.x = (clamped / 100) * usable;
+            return true;
+        }
+    }
+    return false;
 }
 // ---- Analyse de la selection ----------------------------------------------
 function analyzeSelection() {
