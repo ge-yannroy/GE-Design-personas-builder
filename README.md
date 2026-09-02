@@ -1,4 +1,4 @@
-# GE-DESIGN Personas Builder - Plugin Figma
+# GE-DESIGN Personas Builder — Plugin Figma
 
 Genere une instance de composant (ou un clone de frame) par ligne d'un CSV, en remplissant
 automatiquement les calques texte dont le nom correspond a une colonne (comparaison
@@ -68,6 +68,14 @@ de son rail, a partir d'une valeur numerique lue en CSV.
 - Si le rail est en auto-layout, le plugin bascule automatiquement le curseur en
   positionnement absolu (`layoutPositioning = "ABSOLUTE"`) pour pouvoir le deplacer
   librement, sans toucher au reste de la mise en page.
+- **Reference de largeur/position** : le plugin cherche d'abord le "frere" le plus
+  large du curseur dans son parent direct (typiquement un rail visuel du type
+  `MD_Divider`) et se cale sur sa position + largeur reelles. C'est plus fiable que
+  d'utiliser la largeur du parent direct : si ce parent est en auto-layout avec un
+  sizing "hug contents", Figma ignore les enfants en position absolue (le curseur)
+  dans ce calcul - la largeur mesuree ne refleterait alors que celle du rail seul,
+  potentiellement degeneree. En l'absence d'un tel frere exploitable, le plugin
+  retombe sur l'ancien comportement (largeur du parent direct, origine x=0).
 - Valeur vide dans le CSV -> le curseur garde sa position par defaut. Valeur non
   numerique ou rail trop etroit pour le curseur -> comptabilise dans les "valeurs de
   slider invalides" du resume, la generation continue pour les autres calques/lignes.
